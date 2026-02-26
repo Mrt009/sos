@@ -1,5 +1,6 @@
-const STORAGE_KEY = "sos.settings.v1";
-const LAST_LOCATION_KEY = "sos.lastLocation.v1";
+const STORAGE_KEY = "sos.settings.v2";
+const LAST_LOCATION_KEY = "sos.lastLocation.v2";
+const PANIC_TEST_NUMBER = "+918700523035";
 
 const DEFAULTS = {
   name: "",
@@ -8,38 +9,70 @@ const DEFAULTS = {
     flood: "108",
     earthquake: "112",
     medical: "108",
-    unknown: "112"
+    unknown: PANIC_TEST_NUMBER
   },
-  smsNumber: "112"
+  smsNumber: PANIC_TEST_NUMBER,
+  guardianCall: "",
+  guardianSms: ""
 };
 
 const nameInput = document.getElementById("nameInput");
+const guardianCallInput = document.getElementById("guardianCallInput");
+const guardianSmsInput = document.getElementById("guardianSmsInput");
 const fireInput = document.getElementById("fireInput");
 const floodInput = document.getElementById("floodInput");
 const earthquakeInput = document.getElementById("earthquakeInput");
 const medicalInput = document.getElementById("medicalInput");
 const unknownInput = document.getElementById("unknownInput");
 const smsInput = document.getElementById("smsInput");
+const quickDialInput = document.getElementById("quickDialInput");
 const saveBtn = document.getElementById("saveBtn");
-const locBtn = document.getElementById("locBtn");
+const panicBtn = document.getElementById("panicBtn");
+const directDialBtn = document.getElementById("directDialBtn");
+const guardianCallBtn = document.getElementById("guardianCallBtn");
+const guardianSmsBtn = document.getElementById("guardianSmsBtn");
 const setupStatus = document.getElementById("setupStatus");
 const runtimeStatus = document.getElementById("runtimeStatus");
 const categoryButtons = document.querySelectorAll("[data-category]");
 
 let volatileLocation = loadLastLocation();
+let locationWatchId = null;
 
 boot();
 
 function boot() {
   hydrateForm();
   registerServiceWorker();
-  warmLocation();
+  requestLocationPermission(false);
+  startLocationWatch();
 
-  saveBtn.addEventListener("click", saveSettings);
-  locBtn.addEventListener("click", requestLocationPermission);
+  if (saveBtn) saveBtn.addEventListener("click", saveSettings);
+  if (panicBtn) panicBtn.addEventListener("click", () => startSOS("unknown"));
+  if (directDialBtn) directDialBtn.addEventListener("click", startDirectSOS);
+  if (guardianCallBtn) guardianCallBtn.addEventListener("click", callGuardian);
+  if (guardianSmsBtn) guardianSmsBtn.addEventListener("click", smsGuardian);
+
   categoryButtons.forEach((btn) => {
     btn.addEventListener("click", () => startSOS(btn.dataset.category || "unknown"));
   });
+
+  if (volatileLocation) {
+    setSetupStatus("Location detected and saved.");
+  } else {
+    setSetupStatus("Allow location when prompted for better SMS accuracy.");
+  }
+}
+
+function setSetupStatus(text) {
+  if (setupStatus) {
+    setupStatus.textContent = text;
+  }
+}
+
+function setRuntimeStatus(text) {
+  if (runtimeStatus) {
+    runtimeStatus.textContent = text;
+  }
 }
 
 function registerServiceWorker() {
@@ -51,7 +84,7 @@ function registerServiceWorker() {
     try {
       await navigator.serviceWorker.register("./service-worker.js");
     } catch {
-      // Ignore registration errors for demo mode.
+      // Ignore registration errors in demo mode.
     }
   });
 }
@@ -63,53 +96,62 @@ function sanitizePhone(raw) {
     .replace(/(?!^)\+/g, "");
 }
 
+function cloneDefaults() {
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
 function loadSettings() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) {
       return cloneDefaults();
     }
+
     const parsed = JSON.parse(saved);
+    const contacts = parsed.contacts || {};
+
     return {
       name: parsed.name || "",
       contacts: {
-        fire: parsed.contacts?.fire || DEFAULTS.contacts.fire,
-        flood: parsed.contacts?.flood || DEFAULTS.contacts.flood,
-        earthquake: parsed.contacts?.earthquake || DEFAULTS.contacts.earthquake,
-        medical: parsed.contacts?.medical || DEFAULTS.contacts.medical,
-        unknown: parsed.contacts?.unknown || DEFAULTS.contacts.unknown
+        fire: DEFAULTS.contacts.fire,
+        flood: DEFAULTS.contacts.flood,
+        earthquake: DEFAULTS.contacts.earthquake,
+        medical: DEFAULTS.contacts.medical,
+        unknown: contacts.unknown || DEFAULTS.contacts.unknown
       },
-      smsNumber: parsed.smsNumber || DEFAULTS.smsNumber
+      smsNumber: parsed.smsNumber || DEFAULTS.smsNumber,
+      guardianCall: parsed.guardianCall || DEFAULTS.guardianCall,
+      guardianSms: parsed.guardianSms || DEFAULTS.guardianSms
     };
   } catch {
     return cloneDefaults();
   }
 }
 
-function cloneDefaults() {
-  return JSON.parse(JSON.stringify(DEFAULTS));
-}
-
 function saveSettings() {
   const next = {
     name: nameInput.value.trim(),
     contacts: {
-      fire: sanitizePhone(fireInput.value) || DEFAULTS.contacts.fire,
-      flood: sanitizePhone(floodInput.value) || DEFAULTS.contacts.flood,
-      earthquake: sanitizePhone(earthquakeInput.value) || DEFAULTS.contacts.earthquake,
-      medical: sanitizePhone(medicalInput.value) || DEFAULTS.contacts.medical,
-      unknown: sanitizePhone(unknownInput.value) || DEFAULTS.contacts.unknown
+      fire: DEFAULTS.contacts.fire,
+      flood: DEFAULTS.contacts.flood,
+      earthquake: DEFAULTS.contacts.earthquake,
+      medical: DEFAULTS.contacts.medical,
+      unknown: sanitizePhone(unknownInput.value) || PANIC_TEST_NUMBER
     },
-    smsNumber: sanitizePhone(smsInput.value) || DEFAULTS.smsNumber
+    smsNumber: sanitizePhone(smsInput.value) || PANIC_TEST_NUMBER,
+    guardianCall: sanitizePhone(guardianCallInput.value),
+    guardianSms: sanitizePhone(guardianSmsInput.value)
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  setupStatus.textContent = "Saved offline settings.";
+  setSetupStatus("Saved offline settings.");
 }
 
 function hydrateForm() {
   const config = loadSettings();
   nameInput.value = config.name;
+  guardianCallInput.value = config.guardianCall;
+  guardianSmsInput.value = config.guardianSms;
   fireInput.value = config.contacts.fire;
   floodInput.value = config.contacts.flood;
   earthquakeInput.value = config.contacts.earthquake;
@@ -121,10 +163,7 @@ function hydrateForm() {
 function loadLastLocation() {
   try {
     const saved = localStorage.getItem(LAST_LOCATION_KEY);
-    if (!saved) {
-      return null;
-    }
-    return JSON.parse(saved);
+    return saved ? JSON.parse(saved) : null;
   } catch {
     return null;
   }
@@ -140,48 +179,61 @@ function storeLastLocation(coords) {
   localStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(snapshot));
 }
 
-function warmLocation() {
+function requestLocationPermission(showStatus) {
   if (!("geolocation" in navigator)) {
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => storeLastLocation(pos.coords),
-    () => {},
-    { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 }
-  );
-}
-
-async function requestLocationPermission() {
-  if (!("geolocation" in navigator)) {
-    setupStatus.textContent = "Geolocation not supported on this device/browser.";
+    if (showStatus) {
+      setSetupStatus("Geolocation is not supported on this device/browser.");
+    }
     return;
   }
 
-  setupStatus.textContent = "Requesting location permission...";
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       storeLastLocation(pos.coords);
-      setupStatus.textContent = "Location access granted and saved.";
+      if (showStatus) {
+        setSetupStatus("Location updated.");
+      }
     },
     () => {
-      setupStatus.textContent = "Location permission denied or unavailable.";
+      if (showStatus && !volatileLocation) {
+        setSetupStatus("Location unavailable. SOS still works.");
+      }
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
 
-function formatLocationForMessage() {
-  const loc = volatileLocation;
-  if (!loc) {
-    return "unavailable";
+function startLocationWatch() {
+  if (!("geolocation" in navigator) || locationWatchId !== null) {
+    return;
   }
-  const ageMs = Date.now() - loc.ts;
-  const ageSec = Math.max(1, Math.round(ageMs / 1000));
-  return `${loc.lat},${loc.lng} (age ${ageSec}s)`;
+
+  locationWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      storeLastLocation(pos.coords);
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
+  );
+}
+
+function getLocationPayload() {
+  if (!volatileLocation) {
+    return {
+      text: "unavailable",
+      mapLink: ""
+    };
+  }
+
+  const coords = `${volatileLocation.lat},${volatileLocation.lng}`;
+  return {
+    text: coords,
+    mapLink: `https://maps.google.com/?q=${coords}`
+  };
 }
 
 function getCallNumberForCategory(category, config) {
-  return config.contacts[category] || config.contacts.unknown || "112";
+  return config.contacts[category] || config.contacts.unknown || PANIC_TEST_NUMBER;
 }
 
 function smsHref(number, body) {
@@ -190,23 +242,95 @@ function smsHref(number, body) {
   return `sms:${number}${separator}body=${encodeURIComponent(body)}`;
 }
 
-function startSOS(category) {
+function buildSosMessage(category, config) {
+  const location = getLocationPayload();
+  const reporter = config.name || "Unknown person";
+  const timestamp = new Date().toLocaleString();
+  const networkHint = navigator.onLine
+    ? "Internet available."
+    : "Internet not available. Sending through cellular network.";
+
+  return `SOS from ${reporter}. Category: ${category}. Time: ${timestamp}. GPS: ${location.text}. ${location.mapLink} ${networkHint}`;
+}
+
+function dialNumber(number) {
+  const clean = sanitizePhone(number);
+  if (!clean) {
+    return false;
+  }
+  window.location.href = `tel:${clean}`;
+  return true;
+}
+
+function openSms(number, message) {
+  const clean = sanitizePhone(number);
+  if (!clean) {
+    return false;
+  }
+  window.location.href = smsHref(clean, message);
+  return true;
+}
+
+function startSOS(category, directNumber) {
   const config = loadSettings();
   const selectedCategory = category || "unknown";
-  const callNumber = getCallNumberForCategory(selectedCategory, config);
-  const smsNumber = config.smsNumber || callNumber;
-  const locationText = formatLocationForMessage();
-  const now = new Date().toLocaleString();
-  const reporter = config.name ? `${config.name}` : "Unknown person";
-  const body = `SOS from ${reporter}. Category: ${selectedCategory}. Time: ${now}. Location: ${locationText}.`;
+  const overrideNumber = sanitizePhone(directNumber || "");
+  const callNumber = overrideNumber || getCallNumberForCategory(selectedCategory, config);
+  const smsNumber = sanitizePhone(config.smsNumber) || callNumber;
 
-  runtimeStatus.textContent = `Opening call to ${callNumber} and SMS to ${smsNumber}...`;
+  if (!callNumber) {
+    setRuntimeStatus("No call number set. Add one in Setup first.");
+    return;
+  }
 
-  // Update location opportunistically for next attempt.
-  warmLocation();
+  requestLocationPermission(false);
+  const smsBody = buildSosMessage(selectedCategory, config);
 
-  window.location.href = `tel:${callNumber}`;
+  setRuntimeStatus(`Dialing ${callNumber}. Then opening SMS to ${smsNumber}.`);
+
+  dialNumber(callNumber);
   setTimeout(() => {
-    window.location.href = smsHref(smsNumber, body);
+    openSms(smsNumber, smsBody);
   }, 1200);
+}
+
+function startDirectSOS() {
+  const directNumber = sanitizePhone(quickDialInput ? quickDialInput.value : "");
+  if (!directNumber) {
+    setRuntimeStatus("Enter a direct emergency number first.");
+    return;
+  }
+  startSOS("direct", directNumber);
+}
+
+function callGuardian() {
+  const config = loadSettings();
+  const number = sanitizePhone(config.guardianCall) || sanitizePhone(config.contacts.unknown);
+
+  if (!number) {
+    setRuntimeStatus("Guardian call number not set.");
+    return;
+  }
+
+  setRuntimeStatus(`Dialing guardian: ${number}.`);
+  dialNumber(number);
+}
+
+function smsGuardian() {
+  const config = loadSettings();
+  const number =
+    sanitizePhone(config.guardianSms) ||
+    sanitizePhone(config.guardianCall) ||
+    sanitizePhone(config.smsNumber) ||
+    sanitizePhone(config.contacts.unknown);
+
+  if (!number) {
+    setRuntimeStatus("Guardian SMS number not set.");
+    return;
+  }
+
+  requestLocationPermission(false);
+  const message = buildSosMessage("guardian-alert", config);
+  setRuntimeStatus(`Opening SMS to guardian: ${number}.`);
+  openSms(number, message);
 }
