@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SOS icon">
+  <rect width="128" height="128" rx="20" fill="#0d3b66"/>
+  <circle cx="64" cy="64" r="34" fill="#ffffff" opacity="0.18"/>
+  <path d="M45 37h38v54H45z" fill="#fff" opacity="0.92"/>
+  <path d="M59 25h10v20H59zM59 83h10v20H59zM25 59h20v10H25zM83 59h20v10H83z" fill="#ffd166"/>
+  <text x="64" y="69" text-anchor="middle" font-size="22" font-family="Arial, sans-serif" fill="#0d3b66" font-weight="700">SOS</text>
+</svg>
