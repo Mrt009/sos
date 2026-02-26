@@ -10,87 +10,108 @@
   </head>
   <body>
     <main class="container">
-      <header class="hero">
-        <h1>Disaster SOS Offline Demo</h1>
-        <p>
-          Works offline after first load. Calls and SMS use cellular network.
-        </p>
+      <header class="hero card">
+        <img src="./icon.svg" alt="Emergency SOS" class="hero-icon" />
+        <div>
+          <h1>Emergency SOS (Offline Ready)</h1>
+          <p>
+            Category buttons are at top for fastest tap. Works offline after first load.
+          </p>
+        </div>
       </header>
 
+      <section class="card sos-top-card">
+        <h2>SOS Category (Tap First)</h2>
+        <div class="sos-category-grid">
+          <button id="panicBtn" class="btn panic cat-btn">PANIC / UNKNOWN</button>
+          <button class="btn danger cat-btn" data-category="fire">FIRE</button>
+          <button class="btn danger cat-btn" data-category="flood">FLOOD</button>
+          <button class="btn danger cat-btn" data-category="earthquake">EARTHQUAKE</button>
+          <button class="btn danger cat-btn" data-category="medical">MEDICAL</button>
+        </div>
+
+      </section>
+
+      <section class="card emergency-card">
+        <h2>Quick Emergency Actions</h2>
+
+        <div class="quick-grid">
+          <label class="inline-control">
+            Direct Emergency Number
+            <input id="quickDialInput" type="tel" placeholder="+91 8700523035" />
+          </label>
+          <button id="directDialBtn" class="btn quick">Call + SMS Direct Number</button>
+          <button id="guardianCallBtn" class="btn guardian">Call Guardian</button>
+          <button id="guardianSmsBtn" class="btn guardian-secondary">SMS Guardian</button>
+        </div>
+      </section>
+
       <section class="card">
-        <h2>1) First-Time Setup</h2>
+        <h2>Setup (Save Once)</h2>
         <p class="muted">
-          Save numbers for each category. If category is unknown, fallback number
-          is used.
+          Name is optional. Location permission is requested automatically on load.
+          Fire, Flood, Earthquake, and Medical numbers are locked.
         </p>
 
         <div class="grid">
           <label>
-            Your Name
+            Name (Optional)
             <input id="nameInput" type="text" placeholder="Asha" />
           </label>
 
           <label>
+            Guardian Call Number
+            <input id="guardianCallInput" type="tel" placeholder="+91 9000000000" />
+          </label>
+
+          <label>
+            Guardian SMS Number
+            <input id="guardianSmsInput" type="tel" placeholder="+91 9000000000" />
+          </label>
+
+          <label>
             Fire Number
-            <input id="fireInput" type="tel" placeholder="101" />
+            <input id="fireInput" type="tel" placeholder="101" readonly />
           </label>
 
           <label>
             Flood Number
-            <input id="floodInput" type="tel" placeholder="108" />
+            <input id="floodInput" type="tel" placeholder="108" readonly />
           </label>
 
           <label>
             Earthquake Number
-            <input id="earthquakeInput" type="tel" placeholder="112" />
+            <input id="earthquakeInput" type="tel" placeholder="112" readonly />
           </label>
 
           <label>
             Medical Number
-            <input id="medicalInput" type="tel" placeholder="108" />
+            <input id="medicalInput" type="tel" placeholder="108" readonly />
           </label>
 
           <label>
-            Unknown Fallback
-            <input id="unknownInput" type="tel" placeholder="112" />
+            Unknown / Panic Number
+            <input id="unknownInput" type="tel" placeholder="+91 8700523035" />
           </label>
 
           <label>
-            SMS Number
-            <input id="smsInput" type="tel" placeholder="112" />
+            Default SMS Number
+            <input id="smsInput" type="tel" placeholder="+91 8700523035" />
           </label>
         </div>
 
         <div class="actions">
           <button id="saveBtn" class="btn">Save Offline Settings</button>
-          <button id="locBtn" class="btn btn-secondary">Grant Location Permission</button>
         </div>
         <p id="setupStatus" class="status"></p>
       </section>
 
-      <section class="card">
-        <h2>2) Emergency Action</h2>
-        <p class="muted">
-          Tap category, then app opens call and prefilled SMS. User confirms on phone UI.
-        </p>
-
-        <div class="category-grid">
-          <button class="btn danger" data-category="fire">Fire</button>
-          <button class="btn danger" data-category="flood">Flood</button>
-          <button class="btn danger" data-category="earthquake">Earthquake</button>
-          <button class="btn danger" data-category="medical">Medical</button>
-          <button class="btn warning" data-category="unknown">Unknown / Panic</button>
-        </div>
-
-        <p id="runtimeStatus" class="status"></p>
-      </section>
-
       <section class="card small">
-        <h2>Notes</h2>
+        <h2>Important</h2>
         <ul>
-          <li>First install/open requires internet once.</li>
-          <li>After that, app UI can run without internet.</li>
-          <li>Call/SMS still require cellular signal.</li>
+          <li>First install/open needs internet once.</li>
+          <li>After install, app UI runs offline.</li>
+          <li>If SMS cannot send immediately, phone outbox retries once network returns.</li>
         </ul>
       </section>
     </main>
@@ -98,3 +119,4 @@
     <script src="./app.js"></script>
   </body>
 </html>
+
