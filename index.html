@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d3b66" />
+    <title>Disaster SOS Offline Demo</title>
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <h1>Disaster SOS Offline Demo</h1>
+        <p>
+          Works offline after first load. Calls and SMS use cellular network.
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>1) First-Time Setup</h2>
+        <p class="muted">
+          Save numbers for each category. If category is unknown, fallback number
+          is used.
+        </p>
+
+        <div class="grid">
+          <label>
+            Your Name
+            <input id="nameInput" type="text" placeholder="Asha" />
+          </label>
+
+          <label>
+            Fire Number
+            <input id="fireInput" type="tel" placeholder="101" />
+          </label>
+
+          <label>
+            Flood Number
+            <input id="floodInput" type="tel" placeholder="108" />
+          </label>
+
+          <label>
+            Earthquake Number
+            <input id="earthquakeInput" type="tel" placeholder="112" />
+          </label>
+
+          <label>
+            Medical Number
+            <input id="medicalInput" type="tel" placeholder="108" />
+          </label>
+
+          <label>
+            Unknown Fallback
+            <input id="unknownInput" type="tel" placeholder="112" />
+          </label>
+
+          <label>
+            SMS Number
+            <input id="smsInput" type="tel" placeholder="112" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="saveBtn" class="btn">Save Offline Settings</button>
+          <button id="locBtn" class="btn btn-secondary">Grant Location Permission</button>
+        </div>
+        <p id="setupStatus" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>2) Emergency Action</h2>
+        <p class="muted">
+          Tap category, then app opens call and prefilled SMS. User confirms on phone UI.
+        </p>
+
+        <div class="category-grid">
+          <button class="btn danger" data-category="fire">Fire</button>
+          <button class="btn danger" data-category="flood">Flood</button>
+          <button class="btn danger" data-category="earthquake">Earthquake</button>
+          <button class="btn danger" data-category="medical">Medical</button>
+          <button class="btn warning" data-category="unknown">Unknown / Panic</button>
+        </div>
+
+        <p id="runtimeStatus" class="status"></p>
+      </section>
+
+      <section class="card small">
+        <h2>Notes</h2>
+        <ul>
+          <li>First install/open requires internet once.</li>
+          <li>After that, app UI can run without internet.</li>
+          <li>Call/SMS still require cellular signal.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
